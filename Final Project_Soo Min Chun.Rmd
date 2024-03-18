@@ -1,0 +1,108 @@
+---
+title: "Final Project_Soo Min Chun"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-11-22"
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Unemployment Rate Data
+```{r}
+library(readxl)
+library(ggplot2)
+library(forecast)
+
+#unemployment rate
+unemp = read_excel("UNRATE.xls")
+unemp.ts = ts(unemp$UNRATE, start = c(1990, 1), end = c(2022, 4), frequency = 4)
+
+model <- lm(unemp.ts ~ time(unemp.ts))
+
+plot(unemp.ts, main = "Unemployment Rate by Quarter", xlab = "Time", ylab = "Unemployment Rate")
+abline(model, col = "red")
+```
+
+Partition Data
+```{r}
+unemp.train.ts = window(unemp.ts, end = c(2019, 4))
+unemp.valid.ts = window(unemp.ts, start = c(2020, 1))
+```
+
+Final Models
+
+Holt-Winter's Model
+```{r}
+unemp.hw = ets(unemp.train.ts, model = "AAA")
+summary(unemp.hw)
+unemp.hw.pred = forecast.ets(unemp.hw, h = length(unemp.valid.ts), level = 0)
+unemp.hw.pred
+
+checkresiduals(unemp.hw)
+accuracy(unemp.hw.pred, unemp.valid.ts)
+
+autoplot(unemp.train.ts, main = "Holt-Winter's Model Prediction", ylab = "Unemployment Rate") +
+  autolayer(unemp.valid.ts, series = "Actual") +
+  autolayer(unemp.hw.pred, series = "HW Model")
+```
+
+Holt-Winter's Model with auto-selected components
+```{r}
+unemp.autohw = ets(unemp.train.ts, model = "ZZZ")
+summary(unemp.autohw)
+unemp.autohw.pred = forecast.ets(unemp.autohw, h = length(unemp.valid.ts), level = 0)
+unemp.autohw.pred
+
+checkresiduals(unemp.autohw)
+accuracy(unemp.autohw.pred, unemp.valid.ts)
+
+autoplot(unemp.train.ts, main = "Holt-Winter's Model Prediction with auto-selected components", ylab = "Unemployment Rate") +
+  autolayer(unemp.valid.ts, series = "Actual") +
+  autolayer(unemp.autohw.pred, series = "HW Model")
+```
+
+ARIMA Model with auto-selected components
+```{r}
+unemp.autoAR = auto.arima(unemp.train.ts, seasonal = FALSE)
+summary(unemp.autoAR)
+unemp.autoAR.pred = forecast(unemp.autoAR, h = length(unemp.valid.ts))
+unemp.autoAR.pred
+
+checkresiduals(unemp.autoAR)
+accuracy(unemp.autoAR.pred, unemp.valid.ts)
+
+autoplot(unemp.train.ts, main = "ARIMA Model with auto-selected components", ylab = "Unemployment Rate") +
+  autolayer(unemp.valid.ts, series = "Actual") +
+  autolayer(unemp.autoAR.pred$mean, series = "ARIMA Model")
+```
+
+SARIMA Model with auto-selected components
+```{r}
+unemp.autoSAR = auto.arima(unemp.train.ts, seasonal=TRUE)
+summary(unemp.autoSAR)
+unemp.autoSAR.pred = forecast(unemp.autoSAR, h = length(unemp.valid.ts))
+unemp.autoSAR.pred
+
+checkresiduals(unemp.autoSAR)
+accuracy(unemp.autoSAR.pred, unemp.valid.ts)
+
+autoplot(unemp.train.ts, main = "SARIMA Model with auto-selected components", ylab = "Unemployment Rate") +
+  autolayer(unemp.valid.ts, series = "Actual") +
+  autolayer(unemp.autoSAR.pred$mean, series = "SARIMA Model")
+```
+
+Final Model Selection and Prediction for 2023-2025
+```{r}
+unemp.autohw.future = ets(unemp.ts, model = "ZZZ")
+summary(unemp.autohw.future)
+unemp.autohw.future.pred = forecast.ets(unemp.autohw.future, h = 12, level = 0)
+unemp.autohw.future.pred
+
+autoplot(unemp.ts, main = "Holt-Winter's Model Prediction for 2023-2025", ylab = "Unemployment Rate") +
+  autolayer(unemp.autohw.future.pred, series = "HW Model Prediction")
+```
